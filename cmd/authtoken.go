@@ -12,10 +12,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/orbitlink/orbitlink-machine/internal/buildmeta"
-	"github.com/orbitlink/orbitlink-machine/internal/config"
-	"github.com/orbitlink/orbitlink-machine/internal/httpclient"
-	"github.com/orbitlink/orbitlink-machine/internal/logger"
+	"github.com/orbitproxy/orbitproxy-machine/buildmeta"
+	"github.com/orbitproxy/orbitproxy-machine/config"
+	"github.com/orbitproxy/orbitproxy-machine/httpclient"
+	"github.com/orbitproxy/orbitproxy-machine/logger"
 	"github.com/spf13/cobra"
 )
 
@@ -24,22 +24,22 @@ const publicKeyAlgorithm = "ed25519"
 var authtokenCmd = &cobra.Command{
 	Use:   "authtoken <token>",
 	Short: "Register this machine with an authtoken",
-	Long:  "Generate a local machine identity, register with control-plane, and persist machine config under the workdir.",
+	Long:  "Generate a local machine identity, register with control-plane, and persist machine config under <workdir>/<machineKey>/.",
 	Args:  cobra.ExactArgs(1),
 	RunE:  runAuthtoken,
 }
 
 func init() {
-	authtokenCmd.Flags().String("machine-id", "", "reuse an existing local machine ID")
 	authtokenCmd.Flags().String("name", "", "optional machine display name")
+	authtokenCmd.Flags().String("machine-key", "", "restore an existing machine by machine key")
 	authtokenCmd.Flags().Bool("force", false, "overwrite existing local config")
 	rootCmd.AddCommand(authtokenCmd)
 }
 
 type registerOptions struct {
 	authToken   string
+	machineKey  string
 	workDir     string
-	machineID   string
 	machineName string
 	hostname    string
 	force       bool
@@ -49,7 +49,7 @@ type registerOptions struct {
 type registerResult struct {
 	workDir              string
 	configPath           string
-	machineID            string
+	machineKey           string
 	edgeAddr             string
 	tlsServerName        string
 	publicKeyFingerprint string
@@ -57,7 +57,8 @@ type registerResult struct {
 
 type registerRequest struct {
 	AuthToken          string `json:"authtoken"`
-	MachineID          string `json:"machineId,omitempty"`
+	MachineKey         string `json:"machineKey,omitempty"`
+	Type               string `json:"type,omitempty"`
 	MachineName        string `json:"machineName,omitempty"`
 	Hostname           string `json:"hostname,omitempty"`
 	PublicKeyAlgorithm string `json:"publicKeyAlgorithm"`
@@ -68,30 +69,27 @@ type registerRequest struct {
 type registerResponseData struct {
 	Machine struct {
 		ID                   string `json:"id"`
-		MachineID            string `json:"machineId"`
+		MachineKey           string `json:"machineKey"`
+		Type                 string `json:"type"`
 		PublicKeyFingerprint string `json:"publicKeyFingerprint"`
 	} `json:"machine"`
 	Edge struct {
-		Addr string `json:"addr"`
-		TLS  struct {
-			ServerName string `json:"serverName"`
-			CAPEM      string `json:"caPem"`
-		} `json:"tls"`
+		Addr   string `json:"addr"`
+		CACert string `json:"caCert"`
 	} `json:"edge"`
 }
 
 func runAuthtoken(cmd *cobra.Command, args []string) error {
-	workDir, err := config.ResolveWorkDir(workDirFlag)
+	root, err := config.ResolveRoot(workDirFlag)
 	if err != nil {
 		return err
 	}
-	logger.Init("", workDir)
 
-	machineID, err := cmd.Flags().GetString("machine-id")
+	machineName, err := cmd.Flags().GetString("name")
 	if err != nil {
 		return err
 	}
-	machineName, err := cmd.Flags().GetString("name")
+	machineKey, err := cmd.Flags().GetString("machine-key")
 	if err != nil {
 		return err
 	}
@@ -105,8 +103,8 @@ func runAuthtoken(cmd *cobra.Command, args []string) error {
 
 	result, err := registerMachine(ctx, registerOptions{
 		authToken:   args[0],
-		workDir:     workDir,
-		machineID:   machineID,
+		machineKey:  machineKey,
+		workDir:     root,
 		machineName: machineName,
 		force:       force,
 	})
@@ -114,26 +112,41 @@ func runAuthtoken(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	logger.Info(logger.Terminal).Msg("machine registration complete")
-	fmt.Println()
 	pairs := registrationDetailPairs(result)
-	logger.PrintDetailLines(pairs)
-	fmt.Println()
-
-	fileEvent := logger.Info(logger.File)
+	log := logger.New(logger.Options{
+		LogDir: config.LogsDir(result.workDir),
+	})
+	attrs := make([]any, 0, len(pairs)*2)
 	for _, pair := range pairs {
-		fileEvent = fileEvent.Str(pair[0], pair[1])
+		attrs = append(attrs, pair[0], pair[1])
 	}
+	log.Info("machine registration complete", attrs...)
+
+	fmt.Println("machine registration complete")
+	fmt.Println()
+	for _, pair := range pairs {
+		if pair[1] == "" {
+			continue
+		}
+		fmt.Printf("%s: %s\n", pair[0], pair[1])
+	}
+	fmt.Println()
 	return nil
 }
 
 func registerMachine(ctx context.Context, opts registerOptions) (*registerResult, error) {
-	workDir, err := config.ResolveWorkDir(opts.workDir)
+	root, err := config.ResolveRoot(opts.workDir)
 	if err != nil {
 		return nil, err
 	}
-	configPath := config.Path(workDir)
-	if !opts.force {
+
+	requestedKey := strings.TrimSpace(opts.machineKey)
+	if requestedKey != "" && !opts.force {
+		machineDir, err := config.MachineDir(root, requestedKey)
+		if err != nil {
+			return nil, err
+		}
+		configPath := config.Path(machineDir)
 		if _, err := os.Stat(configPath); err == nil {
 			return nil, fmt.Errorf("machine config already exists at %s; use --force to overwrite", configPath)
 		} else if err != nil && !os.IsNotExist(err) {
@@ -145,8 +158,6 @@ func registerMachine(ctx context.Context, opts registerOptions) (*registerResult
 	if authToken == "" {
 		return nil, fmt.Errorf("authtoken is required")
 	}
-
-	machineID := strings.TrimSpace(opts.machineID)
 
 	hostname := strings.TrimSpace(opts.hostname)
 	if hostname == "" {
@@ -163,14 +174,21 @@ func registerMachine(ctx context.Context, opts registerOptions) (*registerResult
 		return nil, err
 	}
 
+	if !buildmeta.IsClientSemver(buildmeta.SoftVersion) {
+		return nil, fmt.Errorf("client version is required; inject buildmeta.SoftVersion via -ldflags as semver, got %q", buildmeta.SoftVersion)
+	}
+
 	reqBody := registerRequest{
 		AuthToken:          authToken,
-		MachineID:          machineID,
+		MachineKey:         requestedKey,
 		MachineName:        machineName,
 		Hostname:           hostname,
 		PublicKeyAlgorithm: publicKeyAlgorithm,
 		PublicKey:          publicKeyPEM,
 		Base:               httpclient.Base{}.Resolve(buildmeta.SoftVersion),
+	}
+	if requestedKey == "" {
+		reqBody.Type = "cli"
 	}
 
 	registerURL := buildmeta.ControlPlaneURL + "/v1/machines/register"
@@ -196,26 +214,44 @@ func registerMachine(ctx context.Context, opts registerOptions) (*registerResult
 	}
 
 	respData := respEnvelope.Data
-	if strings.TrimSpace(respData.Machine.ID) == "" || strings.TrimSpace(respData.Edge.Addr) == "" {
+	if strings.TrimSpace(respData.Machine.MachineKey) == "" ||
+		strings.TrimSpace(respData.Edge.Addr) == "" ||
+		strings.TrimSpace(respData.Edge.CACert) == "" {
 		return nil, fmt.Errorf("register machine failed: control-plane response is missing machine registration data")
 	}
 
+	machineDir, err := config.MachineDir(root, respData.Machine.MachineKey)
+	if err != nil {
+		return nil, err
+	}
+	configPath := config.Path(machineDir)
+	if !opts.force {
+		if _, err := os.Stat(configPath); err == nil {
+			return nil, fmt.Errorf("machine config already exists at %s; use --force to overwrite", configPath)
+		} else if err != nil && !os.IsNotExist(err) {
+			return nil, fmt.Errorf("inspect machine config %s: %w", configPath, err)
+		}
+	}
+
 	machineCfg := config.Config{
-		MachineID:     respData.Machine.ID,
+		MachineKey:    respData.Machine.MachineKey,
+		Type:          respData.Machine.Type,
 		EdgeAddr:      respData.Edge.Addr,
-		TLSServerName: respData.Edge.TLS.ServerName,
-		TLSCAPEM:      respData.Edge.TLS.CAPEM,
+		MachineCACert: respData.Edge.CACert,
 		PublicKeyPEM:  publicKeyPEM,
 		PrivateKeyPEM: privateKeyPEM,
 	}
-	if err := config.Save(workDir, machineCfg); err != nil {
+	if machineCfg.Type == "" {
+		machineCfg.Type = "cli"
+	}
+	if err := config.Save(machineDir, machineCfg); err != nil {
 		return nil, err
 	}
 
 	return &registerResult{
-		workDir:              workDir,
+		workDir:              machineDir,
 		configPath:           configPath,
-		machineID:            machineCfg.MachineID,
+		machineKey:           machineCfg.MachineKey,
 		edgeAddr:             machineCfg.EdgeAddr,
 		tlsServerName:        machineCfg.TLSServerName,
 		publicKeyFingerprint: strings.TrimSpace(respData.Machine.PublicKeyFingerprint),
@@ -244,7 +280,7 @@ func generateKeyPair() (string, string, error) {
 
 func registrationDetailPairs(result *registerResult) [][2]string {
 	pairs := [][2]string{
-		{"machine_id", result.machineID},
+		{"machine_key", result.machineKey},
 		{"config", result.configPath},
 		{"workdir", result.workDir},
 		{"edge", result.edgeAddr},

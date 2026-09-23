@@ -1,14 +1,16 @@
 package main
 
 import (
+	"fmt"
 	"os"
-
-	"github.com/orbitlink/orbitlink-machine/internal/logger"
 )
 
 func main() {
+	if maybeRunAsService() {
+		return
+	}
 	if err := Execute(); err != nil {
-		logger.Error(logger.Multi).Err(err).Msg("orbitlink-machine command failed")
+		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}
 }
