@@ -14,7 +14,7 @@ func TestEndpointForwards(t *testing.T) {
 	if len(got) != 2 {
 		t.Fatalf("len=%d", len(got))
 	}
-	if got[0].Kind != "basic" || got[0].Domain != "" || got[0].EndpointID != "mep_1" || got[0].Local != "127.0.0.1:3000" {
+	if got[0].Kind != "basic" || got[0].EndpointID != "mep_1" || got[0].Local != "127.0.0.1:3000" {
 		t.Fatalf("row0=%+v", got[0])
 	}
 	if got[1].Kind != "webhook" || got[1].Local != "in-process" {

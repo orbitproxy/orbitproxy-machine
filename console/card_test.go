@@ -15,8 +15,7 @@ func TestFormatCardPlain(t *testing.T) {
 		SessionID:  "sess_1",
 		LogsDir:    "/tmp/logs",
 		Forwards: []Forward{{
-			Kind:       "http",
-			Domain:     "app.example.com",
+			Kind:       "basic",
 			EndpointID: "mep_1",
 			Local:      "127.0.0.1:3000",
 		}},
@@ -33,8 +32,7 @@ func TestFormatCardPlain(t *testing.T) {
 		"sess_1",
 		"/tmp/logs",
 		"Forwarding",
-		"http",
-		"app.example.com",
+		"basic",
 		"mep_1",
 		"127.0.0.1:3000",
 	}

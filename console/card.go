@@ -37,7 +37,6 @@ type Status struct {
 // Forward is one local endpoint row.
 type Forward struct {
 	Kind       string
-	Domain     string
 	EndpointID string
 	Local      string
 }
@@ -68,22 +67,11 @@ func FormatCard(s Status, color bool) string {
 	} else {
 		for _, f := range s.Forwards {
 			kind := fmt.Sprintf("%-*s", kindWidth, emptyDash(f.Kind))
-			domain := strings.TrimSpace(f.Domain)
-			title := emptyDash(domain)
-			if domain == "" {
-				title = emptyDash(f.Local)
-			}
 			b.WriteString(paint(cyan, kind, color))
-			b.WriteString(paint(cyan, title, color))
+			b.WriteString(paint(cyan, emptyDash(f.Local), color))
 			b.WriteByte('\n')
 			b.WriteString(fmt.Sprintf("%-*s", kindWidth, ""))
 			b.WriteString(paint(gray, emptyDash(f.EndpointID), color))
-			if domain != "" {
-				if local := emptyDash(f.Local); local != "-" {
-					b.WriteString("  →  ")
-					b.WriteString(local)
-				}
-			}
 			b.WriteByte('\n')
 		}
 	}
