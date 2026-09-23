@@ -12,7 +12,8 @@ require (
 	gopkg.in/yaml.v3 v3.0.1
 )
 
-// Local SDK until LoggerOptions + MachineKey Identity are published.
+// Local SDK until the endpoint proxies[] wire is published.
+replace github.com/orbitproxy/orbitproxy-go => ../orbitproxy-go
 
 require (
 	github.com/cenkalti/backoff/v5 v5.0.3 // indirect

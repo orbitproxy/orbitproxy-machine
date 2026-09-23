@@ -4,8 +4,10 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"net"
 	"os"
 	"os/signal"
+	"strconv"
 	"strings"
 	"sync"
 	"syscall"
@@ -254,7 +256,26 @@ func endpointForwards(endpoints []service.EndpointStatus) []console.Forward {
 			Kind:       kind,
 			EndpointID: strings.TrimSpace(e.EndpointID),
 			Local:      local,
+			Hosts:      proxyHosts(e),
 		})
 	}
 	return out
+}
+
+func proxyHosts(endpoint service.EndpointStatus) []string {
+	if len(endpoint.Proxies) == 0 {
+		return nil
+	}
+	hosts := make([]string, 0, len(endpoint.Proxies))
+	for _, proxy := range endpoint.Proxies {
+		if proxy.PubHost == "" {
+			continue
+		}
+		host := proxy.PubHost
+		if endpoint.Protocol == "tcp" || (proxy.PubPort != 0 && proxy.PubPort != 443) {
+			host = net.JoinHostPort(proxy.PubHost, strconv.Itoa(proxy.PubPort))
+		}
+		hosts = append(hosts, host)
+	}
+	return hosts
 }

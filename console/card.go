@@ -39,6 +39,7 @@ type Forward struct {
 	Kind       string
 	EndpointID string
 	Local      string
+	Hosts      []string
 }
 
 // FormatCard renders a ngrok-style status card. color=false is for tests.
@@ -73,6 +74,11 @@ func FormatCard(s Status, color bool) string {
 			b.WriteString(fmt.Sprintf("%-*s", kindWidth, ""))
 			b.WriteString(paint(gray, emptyDash(f.EndpointID), color))
 			b.WriteByte('\n')
+			for _, host := range f.Hosts {
+				b.WriteString(fmt.Sprintf("%-*s", kindWidth, ""))
+				b.WriteString(paint(gray, emptyDash(host), color))
+				b.WriteByte('\n')
+			}
 		}
 	}
 	b.WriteByte('\n')
