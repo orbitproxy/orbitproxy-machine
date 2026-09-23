@@ -242,7 +242,7 @@ func (c *runCard) disconnected(reason string, permanent bool) {
 func endpointForwards(endpoints []service.EndpointStatus) []console.Forward {
 	out := make([]console.Forward, 0, len(endpoints))
 	for _, e := range endpoints {
-		kind := strings.TrimSpace(e.Type)
+		kind := strings.TrimSpace(e.Category)
 		if kind == "" {
 			kind = strings.TrimSpace(e.Protocol)
 		}
@@ -252,7 +252,6 @@ func endpointForwards(endpoints []service.EndpointStatus) []console.Forward {
 		}
 		out = append(out, console.Forward{
 			Kind:       kind,
-			Domain:     strings.TrimSpace(e.PubHost),
 			EndpointID: strings.TrimSpace(e.EndpointID),
 			Local:      local,
 		})
