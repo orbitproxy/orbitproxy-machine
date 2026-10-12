@@ -104,11 +104,7 @@ func serviceInstall(cmd *cobra.Command, _ []string) error {
 	if err := ensureNotRunning(machineDir); err != nil {
 		return err
 	}
-	offset := logFileSize(config.LogPath(machineDir))
-	if err := installPlatformService(args); err != nil {
-		return err
-	}
-	return reportServiceConnect(cmd.OutOrStdout(), machineDir, offset)
+	return installPlatformService(args)
 }
 
 func serviceStart(cmd *cobra.Command, _ []string) error {
@@ -122,26 +118,17 @@ func serviceStart(cmd *cobra.Command, _ []string) error {
 	if err := ensureForegroundStopped(machineDir); err != nil {
 		return err
 	}
-	offset := logFileSize(config.LogPath(machineDir))
-	if err := startPlatformService(); err != nil {
-		return err
-	}
-	return reportServiceConnect(cmd.OutOrStdout(), machineDir, offset)
+	return startPlatformService()
 }
 
 func serviceRestart(cmd *cobra.Command, _ []string) error {
 	if err := requireAdmin(); err != nil {
 		return err
 	}
-	_, machineDir, err := resolveServiceInstallArgs()
-	if err != nil {
+	if _, _, err := resolveServiceInstallArgs(); err != nil {
 		return err
 	}
-	offset := logFileSize(config.LogPath(machineDir))
-	if err := restartPlatformService(); err != nil {
-		return err
-	}
-	return reportServiceConnect(cmd.OutOrStdout(), machineDir, offset)
+	return restartPlatformService()
 }
 
 func resolveServiceInstallArgs() (serviceInstallArgs, string, error) {

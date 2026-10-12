@@ -1,4 +1,4 @@
-//go:build darwin
+//go:build darwin || linux
 
 package config
 
@@ -13,8 +13,8 @@ import (
 	"syscall"
 )
 
-// OwnServiceFile makes path readable by the launchd UserName.
-// sudo install runs as root and writes 0600 files; the service process is the installing user.
+// OwnServiceFile makes path readable by the service user.
+// sudo install runs as root and writes 0600 files; launchd and systemd run as the installing user.
 func OwnServiceFile(path string, owner *ServiceOwner) error {
 	uid, gid, ok, err := serviceOwnerIDs(owner)
 	if err != nil || !ok {
@@ -26,7 +26,7 @@ func OwnServiceFile(path string, owner *ServiceOwner) error {
 	return nil
 }
 
-// OwnServiceTree gives root-owned files under root back to the launchd user.
+// OwnServiceTree gives root-owned files under root back to the service user.
 // Mode bits stay as they are. Files already owned by that user are left alone.
 func OwnServiceTree(root string, owner *ServiceOwner) error {
 	uid, gid, ok, err := serviceOwnerIDs(owner)
