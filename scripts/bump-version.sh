@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# 把 CLI 发布版本写入 VERSION。本地 make / publish.sh 都读这个文件。
+# 把 CLI 发布版本写入 VERSION。本地构建和发布都读这个文件。
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"

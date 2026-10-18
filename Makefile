@@ -1,10 +1,13 @@
 VERSION ?= $(shell cat VERSION)
 CONTROL_PLANE_URL ?= https://cp.app.orbitproxy.cloud
+CONSOLE_URL ?= https://dashboard.app.orbitproxy.cloud
 TLS_VERIFY ?= on
 LOCAL_CONTROL_PLANE_URL ?= http://127.0.0.1:3003
+LOCAL_CONSOLE_URL ?= http://localhost:3000
 BINARY ?= orbitproxy
 
 LDFLAGS := -X github.com/orbitproxy/orbitproxy-machine/buildmeta.ControlPlaneURL=$(CONTROL_PLANE_URL) \
+	-X github.com/orbitproxy/orbitproxy-machine/buildmeta.ConsoleURL=$(CONSOLE_URL) \
 	-X github.com/orbitproxy/orbitproxy-machine/buildmeta.TLSVerify=$(TLS_VERIFY) \
 	-X github.com/orbitproxy/orbitproxy-machine/buildmeta.SoftVersion=$(VERSION)
 
@@ -16,4 +19,4 @@ build:
 
 # 本地直连 edge machineListener（TLS 关闭）。版本仍读 VERSION，与发布同一条 ldflags。
 build-local:
-	$(MAKE) build CONTROL_PLANE_URL=$(LOCAL_CONTROL_PLANE_URL) TLS_VERIFY=off
+	$(MAKE) build CONTROL_PLANE_URL=$(LOCAL_CONTROL_PLANE_URL) CONSOLE_URL=$(LOCAL_CONSOLE_URL) TLS_VERIFY=off

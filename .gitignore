@@ -2,3 +2,6 @@
 /orbitproxy
 /orbitproxy-machine
 /output/
+
+# 开源仓库不包含内部文档
+/docs/

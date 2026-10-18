@@ -13,6 +13,9 @@ func main() {
 		return
 	}
 	if err := Execute(); err != nil {
+		if code, ok := exitCodeOf(err); ok {
+			os.Exit(code)
+		}
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}

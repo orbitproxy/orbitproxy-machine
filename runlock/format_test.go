@@ -15,6 +15,13 @@ func TestFormatConflictForeground(t *testing.T) {
 	}
 }
 
+func TestFormatConflictBackground(t *testing.T) {
+	msg := FormatConflict(Holder{PID: 7, Mode: ModeBackground})
+	if !strings.Contains(msg, "background") || !strings.Contains(msg, "orbitproxy stop") {
+		t.Fatalf("msg = %q", msg)
+	}
+}
+
 func TestFormatConflictService(t *testing.T) {
 	msg := FormatConflict(Holder{PID: 9, Mode: ModeService})
 	if !strings.Contains(msg, "service") || !strings.Contains(msg, "9") {

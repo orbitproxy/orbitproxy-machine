@@ -25,9 +25,11 @@ import (
 )
 
 var (
-	runMachineKeyFlag string
-	runFromService    bool
-	runLogModeFlag    string
+	runMachineKeyFlag  string
+	runFromService     bool
+	runBackground      bool
+	runBackgroundChild bool
+	runLogModeFlag     string
 )
 
 var runCmd = &cobra.Command{
@@ -42,10 +44,16 @@ func init() {
 	runCmd.Flags().StringVar(&runLogModeFlag, "log", "", `stdout format: status card on a TTY (default), or "legacy" for slog`)
 	runCmd.Flags().BoolVar(&runFromService, "from-service", false, "set when launched by the OS service")
 	_ = runCmd.Flags().MarkHidden("from-service")
+	runCmd.Flags().BoolVar(&runBackground, "background", false, "detach and keep running after this command returns")
+	runCmd.Flags().BoolVar(&runBackgroundChild, "background-child", false, "internal: process already detached by run --background")
+	_ = runCmd.Flags().MarkHidden("background-child")
 	rootCmd.AddCommand(runCmd)
 }
 
 func runMachine(cmd *cobra.Command, _ []string) error {
+	if runBackground && !runBackgroundChild {
+		return startBackground(cmd)
+	}
 	if !runFromService {
 		if err := refuseRootForeground(); err != nil {
 			return err
@@ -55,8 +63,11 @@ func runMachine(cmd *cobra.Command, _ []string) error {
 	defer stop()
 
 	mode := runlock.ModeForeground
-	if runFromService {
+	switch {
+	case runFromService:
 		mode = runlock.ModeService
+	case runBackgroundChild:
+		mode = runlock.ModeBackground
 	}
 	return runMachineWithContext(ctx, workDirFlag, runMachineKeyFlag, mode, runLogModeFlag)
 }
@@ -122,7 +133,7 @@ func runMachineWithContext(ctx context.Context, workdir, machineKey, mode, logMo
 	slogLogger := logger.New(logger.Options{
 		Level:  machineCfg.Logger.Level,
 		LogDir: logsDir,
-		Stdout: !useCard,
+		Stdout: !useCard && mode != runlock.ModeBackground,
 	})
 	slogLogger.Info("orbitproxy started",
 		"machine_key", machineCfg.MachineKey,
@@ -149,6 +160,18 @@ func runMachineWithContext(ctx context.Context, workdir, machineKey, mode, logMo
 		card.ui.Card(card.status)
 	}
 
+	// 启动时清掉上次异常退出残留的快照，避免 http 命令误判端点已落地。
+	if err := config.RemoveIfExists(config.EndpointsPath(machineDir)); err != nil {
+		slogLogger.Warn("remove stale endpoints snapshot failed", "err", err)
+	}
+	defer func() { _ = config.RemoveIfExists(config.EndpointsPath(machineDir)) }()
+	onEndpoints := func(endpoints []service.EndpointStatus) {
+		if err := config.SaveEndpoints(machineDir, endpointsSnapshot(endpoints, time.Now())); err != nil {
+			slogLogger.Warn("write endpoints snapshot failed", "err", err)
+		}
+		card.endpoints(endpoints)
+	}
+
 	svc, err := orbitproxy.Start(ctx, orbitproxy.Identity{
 		MachineKey:    machineCfg.MachineKey,
 		EdgeAddr:      machineCfg.EdgeAddr,
@@ -159,7 +182,7 @@ func runMachineWithContext(ctx context.Context, workdir, machineKey, mode, logMo
 		SoftVersion:    buildmeta.SoftVersion,
 		DataRoot:       root,
 		OnConnected:    card.connected,
-		OnEndpoints:    card.endpoints,
+		OnEndpoints:    onEndpoints,
 		OnReconnecting: card.reconnecting,
 		OnDisconnected: card.disconnected,
 	})
@@ -260,6 +283,26 @@ func endpointForwards(endpoints []service.EndpointStatus) []console.Forward {
 		})
 	}
 	return out
+}
+
+func endpointsSnapshot(endpoints []service.EndpointStatus, now time.Time) config.EndpointsSnapshot {
+	snapshot := config.EndpointsSnapshot{UpdatedAt: now.UTC(), Endpoints: make([]config.EndpointEntry, 0, len(endpoints))}
+	for _, endpoint := range endpoints {
+		entry := config.EndpointEntry{
+			EndpointID: endpoint.EndpointID,
+			LocalAddr:  endpoint.LocalAddr,
+			Proxies:    make([]config.EndpointProxy, 0, len(endpoint.Proxies)),
+		}
+		for _, proxy := range endpoint.Proxies {
+			entry.Proxies = append(entry.Proxies, config.EndpointProxy{
+				ProxyID: proxy.ProxyID,
+				PubHost: proxy.PubHost,
+				PubPort: proxy.PubPort,
+			})
+		}
+		snapshot.Endpoints = append(snapshot.Endpoints, entry)
+	}
+	return snapshot
 }
 
 func proxyHosts(endpoint service.EndpointStatus) []string {

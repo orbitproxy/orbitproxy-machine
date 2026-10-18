@@ -11,6 +11,8 @@ import (
 const (
 	ModeForeground = "foreground"
 	ModeService    = "service"
+	// ModeBackground 是 http 等命令拉起的后台 run 进程。
+	ModeBackground = "background"
 	lockFileName   = "orbitproxy.lock"
 )
 
@@ -133,6 +135,12 @@ func FormatConflict(h Holder) string {
 			"OrbitProxy is already running (pid %d, service).\nStop the service first:\n\n  %s\n",
 			h.PID,
 			serviceStopHint(),
+		)
+	}
+	if h.Mode == ModeBackground {
+		return fmt.Sprintf(
+			"OrbitProxy is already running in the background (pid %d).\nStop it first:\n\n  orbitproxy stop\n",
+			h.PID,
 		)
 	}
 	return fmt.Sprintf(

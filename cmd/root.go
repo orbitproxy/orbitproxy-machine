@@ -15,7 +15,7 @@ var rootCmd = &cobra.Command{
 	SilenceUsage:  true,
 	SilenceErrors: true,
 	PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
-		if cmd.Name() == "reset" || cmd.Name() == "delete" || commandHasParentNamed(cmd, "service") {
+		if cmd.Name() == "reset" || cmd.Name() == "delete" || cmd.Name() == "version" || commandHasParentNamed(cmd, "service") {
 			return nil
 		}
 		if err := buildmeta.Validate(); err != nil {

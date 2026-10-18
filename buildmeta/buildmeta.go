@@ -20,6 +20,9 @@ func IsClientSemver(version string) bool {
 // ControlPlaneURL is the control-plane base URL, injected at link time.
 var ControlPlaneURL = ""
 
+// ConsoleURL 是控制台地址，只用于错误提示里的升级链接，可由 -ldflags 覆盖。
+var ConsoleURL = "https://dashboard.app.orbitproxy.cloud"
+
 // SoftVersion is the machine client release version, injected at link time.
 var SoftVersion = ""
 
