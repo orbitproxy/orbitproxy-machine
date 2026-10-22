@@ -89,6 +89,7 @@ type DeviceStartRequest struct {
 	Arch               string `json:"arch"`
 	ClientVersion      string `json:"client_version"`
 	RestoreMachineKey  string `json:"restore_machine_key,omitempty"`
+	Client             string `json:"client,omitempty"`
 }
 
 type DeviceStartResponse struct {

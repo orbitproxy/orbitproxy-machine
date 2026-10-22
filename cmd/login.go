@@ -18,6 +18,8 @@ import (
 // 非 TTY 下 login 必须在 WorkBuddy auth 的 10 秒内返回。
 const deviceStartTimeout = 8 * time.Second
 
+var loginClient string
+
 var loginCmd = &cobra.Command{
 	Use:   "login",
 	Short: "Log in this computer through the browser",
@@ -33,6 +35,7 @@ var loginCmd = &cobra.Command{
 }
 
 func init() {
+	loginCmd.Flags().StringVar(&loginClient, "client", "", "product opening this login: cursor, copilot, claude, trae, or workbuddy")
 	rootCmd.AddCommand(loginCmd)
 }
 
@@ -66,6 +69,7 @@ func runLogin(ctx context.Context, env *cliEnv) error {
 		Arch:               runtime.GOARCH,
 		ClientVersion:      buildmeta.SoftVersion,
 		RestoreMachineKey:  restoreKey,
+		Client:             loginClient,
 	})
 	if err != nil {
 		return err
