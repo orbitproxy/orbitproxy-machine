@@ -8,8 +8,8 @@ github.com/hashicorp/yamux v0.1.2 h1:XtB8kyFOyHXYVFnwT5C3+Bdo8gArse7j2AQ0DA0Uey8
 github.com/hashicorp/yamux v0.1.2/go.mod h1:C+zze2n6e/7wshOZep2A70/aQU6QBRWJO/G6FT1wIns=
 github.com/inconshreveable/mousetrap v1.1.0 h1:wN+x4NVGpMsO7ErUn/mUI3vEoE6Jt13X2s0bqwp9tc8=
 github.com/inconshreveable/mousetrap v1.1.0/go.mod h1:vpF70FUmC8bwa3OWnCshd2FqLfsEA9PFc4w1p2J65bw=
-github.com/orbitproxy/orbitproxy-go v0.3.10 h1:oNjEoROqOYJSo/lEXWlY/+T1309XzUFbdBVHYhp9R7g=
-github.com/orbitproxy/orbitproxy-go v0.3.10/go.mod h1:moJANT68/v/BD1cqwE04OJOKeBJonM/wVdSz1bzyucs=
+github.com/orbitproxy/orbitproxy-go v0.3.12 h1:y8yaZocxU/wXmZ1WGT5Yvl40r1ESVMEun5oZ1HcCC7s=
+github.com/orbitproxy/orbitproxy-go v0.3.12/go.mod h1:moJANT68/v/BD1cqwE04OJOKeBJonM/wVdSz1bzyucs=
 github.com/parnurzeal/gorequest v0.2.17 h1:7z+vEJDgZeGZ0LQwt6KWM/1X3tCmp3RDp3X1rV1jMVs=
 github.com/parnurzeal/gorequest v0.2.17/go.mod h1:M8vFlJSdu3tIZuvIpycSzSRMUAFcP6mYokxkOHF7Rqk=
 github.com/pkg/diff v0.0.0-20200914180035-5b29258ca4f7/go.mod h1:zO8QMzTeZd5cpnIkz/Gn6iK0jDfGicM1nynOkkPIl28=

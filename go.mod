@@ -4,7 +4,7 @@ go 1.25.8
 
 require (
 	github.com/inconshreveable/mousetrap v1.1.0
-	github.com/orbitproxy/orbitproxy-go v0.3.10
+	github.com/orbitproxy/orbitproxy-go v0.3.12
 	github.com/parnurzeal/gorequest v0.2.17
 	github.com/spf13/cobra v1.10.2
 	golang.org/x/sys v0.47.0

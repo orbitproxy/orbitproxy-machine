@@ -9,6 +9,7 @@ import (
 
 	"github.com/orbitproxy/orbitproxy-machine/buildmeta"
 	"github.com/orbitproxy/orbitproxy-machine/machineapi"
+	orbitproxy "github.com/orbitproxy/orbitproxy-go"
 )
 
 const (
@@ -91,6 +92,17 @@ func FromError(err error) *Error {
 			code = "control_plane_error"
 		}
 		return &Error{Code: code, Message: apiErr.Error(), Hint: HintFor(code)}
+	}
+	var machineErr *orbitproxy.MachineAPIError
+	if errors.As(err, &machineErr) {
+		code := machineErr.Code
+		if code == "" && machineErr.Status == 404 {
+			code = "server_unsupported"
+		}
+		if code == "" {
+			code = "control_plane_error"
+		}
+		return &Error{Code: code, Message: machineErr.Error(), Hint: HintFor(code)}
 	}
 	var netErr *machineapi.NetworkError
 	if errors.As(err, &netErr) {
